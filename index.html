@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="theme-color" content="#2196f3"/>
+  <link rel="manifest" href="manifest.json" />
+  <title>Student Expense Tracker</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f3f3f3;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      max-width: 500px;
+      margin: auto;
+      background: white;
+      padding: 20px;
+      margin-top: 40px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px #ccc;
+    }
+    .hidden { display: none; }
+    .flex { display: flex; justify-content: space-between; gap: 10px; margin: 5px 0; }
+    .smart-card {
+      background: #e6f7ff;
+      padding: 10px;
+      margin-top: 15px;
+      border-left: 5px solid #1890ff;
+    }
+    input, button, select {
+      width: 100%;
+      margin: 5px 0;
+      padding: 10px;
+      box-sizing: border-box;
+    }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    table th, table td { border: 1px solid #ccc; padding: 5px; text-align: center; }
+    .logout-btn {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: red;
+      color: white;
+      border: none;
+      padding: 10px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container" id="auth-section">
+  <h2>Signup</h2>
+  <input type="text" id="signup-nickname" placeholder="Nickname" />
+  <input type="email" id="signup-email" placeholder="Email" />
+  <input type="password" id="signup-password" placeholder="Password" />
+  <button onclick="signup()">Signup</button>
+  <h3>or Login</h3>
+  <input type="email" id="login-email" placeholder="Email" />
+  <input type="password" id="login-password" placeholder="Password" />
+  <button onclick="login()">Login</button>
+</div>
+
+<button class="logout-btn hidden" id="logout-btn" onclick="logout()">Logout</button>
+
+<div class="container hidden" id="tracker-section">
+  <h2>Welcome, <span id="nickname-display"></span>!</h2>
+
+  <div class="smart-card">
+    <strong>Smart Tips for Money Management:</strong>
+    <ul>
+      <li>Track all your spending</li>
+      <li>Set savings goal (save at least 10%)</li>
+      <li>Avoid impulse buying</li>
+      <li>Plan your weekly budget</li>
+    </ul>
+  </div>
+
+  <label>Date:</label>
+  <input type="date" id="date" />
+
+  <label>Allowance:</label>
+  <input type="number" id="allowance" placeholder="Enter allowance" />
+
+  <div class="smart-card">
+    <strong>Expenses:</strong><br/>
+    <input type="number" id="transportation" placeholder="Transportation" />
+    <input type="number" id="meal" placeholder="Meal or Snacks" />
+    <div id="other-expenses"></div>
+    <button onclick="addOtherExpense()">Add Other Expense</button>
+  </div>
+
+  <button onclick="submitData()">Submit & Calculate</button>
+
+  <div class="smart-card">
+    <strong>Today's Summary</strong><br/>
+    Allowance: ₱<span id="sum-allowance">0</span><br/>
+    Total Expenses: ₱<span id="sum-expenses">0</span><br/>
+    Remaining Balance: ₱<span id="sum-balance">0</span><br/>
+    Saving Target (10%): ₱<span id="sum-target">0</span><br/>
+    Actual Savings: ₱<span id="sum-savings">0</span>
+  </div>
+
+  <label>Filter History by Month:</label>
+  <select id="month-filter" onchange="filterByMonth()">
+    <option value="">All</option>
+    <option value="01">January</option>
+    <option value="02">February</option>
+    <option value="03">March</option>
+    <option value="04">April</option>
+    <option value="05">May</option>
+    <option value="06">June</option>
+    <option value="07">July</option>
+    <option value="08">August</option>
+    <option value="09">September</option>
+    <option value="10">October</option>
+    <option value="11">November</option>
+    <option value="12">December</option>
+  </select>
+
+  <table>
+    <thead>
+      <tr><th>Date</th><th>Allowance</th><th>Expenses</th><th>Balance</th></tr>
+    </thead>
+    <tbody id="history-table"></tbody>
+  </table>
+</div>
+
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
+  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-auth.js";
+  import { getDatabase, ref, set, push, onValue, update } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyC1l66DhDXfAMOa2WPxocPWS_H3xGbTO_E",
+    authDomain: "tracker-37839.firebaseapp.com",
+    projectId: "tracker-37839",
+    storageBucket: "tracker-37839.appspot.com",
+    messagingSenderId: "569377443416",
+    appId: "1:569377443416:web:cb67316b895567be75042d"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth();
+  const db = getDatabase();
+
+  let currentUser = null;
+  const dateInput = document.getElementById("date");
+  dateInput.valueAsDate = new Date();
+
+  // LocalStorage for offline
+  const saveToLocal = (record) => {
+    let records = JSON.parse(localStorage.getItem("offlineRecords")) || [];
+    records.push(record);
+    localStorage.setItem("offlineRecords", JSON.stringify(records));
+  };
+
+  const syncToFirebase = async () => {
+    if (navigator.onLine && currentUser) {
+      const records = JSON.parse(localStorage.getItem("offlineRecords")) || [];
+      for (const rec of records) {
+        await push(ref(db, 'users/' + currentUser.uid + '/history'), rec);
+      }
+      localStorage.removeItem("offlineRecords");
+      loadHistory();
+    }
+  };
+
+  window.signup = async () => {
+    const nickname = document.getElementById("signup-nickname").value;
+    const email = document.getElementById("signup-email").value;
+    const password = document.getElementById("signup-password").value;
+
+    try {
+      const userCred = await createUserWithEmailAndPassword(auth, email, password);
+      await set(ref(db, 'users/' + userCred.user.uid + '/info'), { nickname, email });
+      alert("Signup successful! Please login.");
+    } catch (error) {
+      alert(error.message);
+    }
+  };
+
+  window.login = async () => {
+    const email = document.getElementById("login-email").value;
+    const password = document.getElementById("login-password").value;
+
+    try {
+      const userCred = await signInWithEmailAndPassword(auth, email, password);
+      currentUser = userCred.user;
+      document.getElementById("auth-section").classList.add("hidden");
+      document.getElementById("tracker-section").classList.remove("hidden");
+      document.getElementById("logout-btn").classList.remove("hidden");
+
+      onValue(ref(db, 'users/' + currentUser.uid + '/info'), snapshot => {
+        const data = snapshot.val();
+        document.getElementById("nickname-display").innerText = data.nickname;
+      });
+
+      await syncToFirebase();
+      loadHistory();
+    } catch (error) {
+      alert(error.message);
+    }
+  };
+
+  window.logout = async () => {
+    await signOut(auth);
+    location.reload();
+  };
+
+  window.addOtherExpense = () => {
+    const div = document.createElement("div");
+    div.classList.add("flex");
+    div.innerHTML = `
+      <input type="text" placeholder="Item name" class="other-item" style="width: 60%;" />
+      <input type="number" placeholder="₱ Amount" class="other-amount" style="width: 35%;" />
+    `;
+    document.getElementById("other-expenses").appendChild(div);
+  };
+
+  window.submitData = async () => {
+    const date = document.getElementById("date").value;
+    const allowance = parseFloat(document.getElementById("allowance").value || 0);
+    const transportation = parseFloat(document.getElementById("transportation").value || 0);
+    const meal = parseFloat(document.getElementById("meal").value || 0);
+    const others = Array.from(document.querySelectorAll(".other-amount")).map(i => parseFloat(i.value || 0));
+    const totalExpenses = transportation + meal + others.reduce((a, b) => a + b, 0);
+    const balance = allowance - totalExpenses;
+    const savingTarget = allowance * 0.1;
+
+    const record = { date, allowance, totalExpenses, balance };
+
+    if (navigator.onLine && currentUser) {
+      await push(ref(db, 'users/' + currentUser.uid + '/history'), record);
+    } else {
+      saveToLocal(record);
+      alert("Saved locally. Will sync when online.");
+    }
+
+    document.getElementById("sum-allowance").innerText = allowance.toFixed(2);
+    document.getElementById("sum-expenses").innerText = totalExpenses.toFixed(2);
+    document.getElementById("sum-balance").innerText = balance.toFixed(2);
+    document.getElementById("sum-target").innerText = savingTarget.toFixed(2);
+    document.getElementById("sum-savings").innerText = balance.toFixed(2);
+
+    loadHistory();
+  };
+
+  function loadHistory() {
+    const table = document.getElementById("history-table");
+    table.innerHTML = "";
+    if (!currentUser) return;
+    onValue(ref(db, 'users/' + currentUser.uid + '/history'), snapshot => {
+      table.innerHTML = "";
+      snapshot.forEach(child => {
+        const data = child.val();
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td>${data.date}</td><td>₱${data.allowance}</td><td>₱${data.totalExpenses}</td><td>₱${data.balance}</td>`;
+        table.appendChild(tr);
+      });
+    });
+  }
+
+  window.filterByMonth = () => {
+    const month = document.getElementById("month-filter").value;
+    const table = document.getElementById("history-table");
+    const rows = Array.from(table.getElementsByTagName("tr"));
+    rows.forEach(row => {
+      const date = row.cells[0].innerText;
+      if (month === "" || date.split("-")[1] === month) {
+        row.style.display = "";
+      } else {
+        row.style.display = "none";
+      }
+    });
+  };
+
+  // Register Service Worker
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('service-worker.js').then(() => {
+      console.log('Service Worker registered');
+    });
+  }
+</script>
+</body>
+</html>
