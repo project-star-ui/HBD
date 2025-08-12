@@ -670,10 +670,36 @@
             <img id="popupImage" src="" alt="Gift Image" src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/4166d976-8d91-4e3c-979a-3a606e657aa6.png">
         </div>
     </div>
+
+    <!-- Audio Elements -->
+    <audio id="backgroundMusic" loop>
+        <source src="audio/birthday_music.mp3" type="audio/mpeg">
+        Your browser does not support the audio element.
+    </audio>
+    <audio id="clickSound">
+        <source src="audio/click_sound.mp3" type="audio/mpeg">
+        Your browser does not support the audio element.
+    </audio>
+    <audio id="partySound">
+        <source src="audio/party_blast.mp3" type="audio/mpeg">
+        Your browser does not support the audio element.
+    </audio>
     
     <script>
+        // Get audio elements
+        const backgroundMusic = document.getElementById('backgroundMusic');
+        const clickSound = document.getElementById('clickSound');
+        const partySound = document.getElementById('partySound');
+
+        // Function to play a sound
+        function playSound(audioElement) {
+            audioElement.currentTime = 0; // Rewind to start
+            audioElement.play().catch(e => console.log("Audio play prevented:", e)); // Catch and log errors
+        }
+
         // Envelope click handler
         document.getElementById('birthday-envelope').addEventListener('click', function() {
+            playSound(clickSound); // Play click sound
             this.classList.add('open'); // Just open the flap
             document.getElementById('envelopeTip').classList.add('hidden'); // Hide the tip message
 
@@ -698,9 +724,10 @@
             document.getElementById('envelopeTip').classList.remove('hidden'); // Show the tip message again if needed (e.g., if user closes message without interacting further)
         }
 
-        // Function to open the image popup
+        // Function to open the image popup (gift)
         function openGift(element, imageUrl) {
             if (!element.classList.contains('open')) { 
+                playSound(clickSound); // Play click sound for gifts
                 element.classList.add('open');
                 const confetti = document.createElement('div');
                 confetti.className = 'confetti';
@@ -739,6 +766,11 @@
             setTimeout(() => {
                 document.getElementById('loader').style.display = 'none';
                 document.body.style.overflowX = 'hidden'; 
+                // Autoplay background music after loader disappears
+                // Note: Autoplay might be blocked by browsers.
+                // A user interaction (like clicking anywhere) is often required.
+                backgroundMusic.volume = 0.3; // Set a lower volume for background music
+                backgroundMusic.play().catch(e => console.log("Background music autoplay prevented:", e));
             }, 500);
         }, 3000);
         
@@ -783,6 +815,7 @@
         
         // Party mode
         function startParty() {
+            playSound(partySound); // Play party sound
             // Create lots of confetti
             for (let i = 0; i < 50; i++) {
                 setTimeout(() => {
@@ -833,6 +866,18 @@
                 }
             });
         };
+
+        // Important: Handle browser autoplay policies
+        // Many browsers block autoplaying audio without user interaction.
+        // A common workaround is to start background music on the first user click.
+        let hasInteracted = false;
+        document.addEventListener('click', () => {
+            if (!hasInteracted) {
+                backgroundMusic.volume = 0.3; // Set a lower volume
+                backgroundMusic.play().catch(e => console.log("Background music play on first interaction prevented:", e));
+                hasInteracted = true;
+            }
+        }, { once: true }); // Run this listener only once
     </script>
 </body>
 </html>
