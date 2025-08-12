@@ -321,8 +321,9 @@
             padding: clamp(0.5rem, 2vw, 1rem);
             border-radius: 10px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-            max-width: 80%; /* Adjusted for desktop view */
-            max-height: 80vh; /* Adjusted for desktop view */
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
             position: relative;
             transform: scale(0.8);
             opacity: 0;
@@ -338,11 +339,14 @@
         }
 
         .image-popup img {
-            max-width: 100%; 
-            max-height: 100%; 
-            display: block; 
+            max-width: 100%;
+            max-height: 70vh;
+            width: auto;
+            height: auto;
+            display: block;
             border-radius: 8px;
-            object-fit: contain; /* Ensures the image fits within the popup without cropping */
+            object-fit: contain;
+            margin: 0 auto;
         }
         
         /* Decorations */
@@ -643,7 +647,7 @@
     <div class="image-overlay" id="imageOverlay">
         <div class="image-popup">
             <button class="close-btn" onclick="closeImage()">&times;</button>
-            <img id="popupImage" src="" alt="Gift Image">
+            <img id="popupImage" src="" alt="Gift Image" src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/4166d976-8d91-4e3c-979a-3a606e657aa6.png">
         </div>
     </div>
     
@@ -678,11 +682,22 @@
                 const confetti = document.createElement('div');
                 confetti.className = 'confetti';
                 confetti.style.left = Math.random() * 100 + '%';
-                document.body.appendChild(confetti); 
+                document.body.appendChild(confetti);
 
-                // Set image source and show popup
-                document.getElementById('popupImage').src = imageUrl;
-                document.getElementById('imageOverlay').classList.add('active');
+                const popupImg = document.getElementById('popupImage');
+                popupImg.style.display = 'none';
+                
+                // Show loading state
+                const overlay = document.getElementById('imageOverlay');
+                overlay.classList.add('active');
+                
+                // Load image first
+                const img = new Image();
+                img.onload = function() {
+                    popupImg.src = imageUrl;
+                    popupImg.style.display = 'block';
+                };
+                img.src = imageUrl;
             }
         }
 
