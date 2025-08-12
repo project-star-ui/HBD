@@ -175,6 +175,21 @@
             color: #e91e63;
         }
         
+        /* Envelope Tip Message */
+        .envelope-tip-message {
+            font-family: 'Poppins', sans-serif;
+            font-size: clamp(0.9rem, 3.5vw, 1.2rem);
+            color: #7b1fa2;
+            margin-bottom: 1rem; /* Space between message and envelope */
+            opacity: 1;
+            transition: opacity 0.5s ease-out;
+        }
+
+        .envelope-tip-message.hidden {
+            opacity: 0;
+            pointer-events: none; /* Prevent interaction when hidden */
+        }
+
         .envelope {
             width: clamp(250px, 70vw, 300px); /* Responsive width */
             height: clamp(150px, 45vw, 200px); /* Responsive height */
@@ -591,6 +606,11 @@
             </div>
         </header>
         
+        <!-- New: Envelope Tip Message -->
+        <div class="envelope-tip-message" id="envelopeTip">
+            Click the envelope to open your special message!
+        </div>
+
         <div class="envelope" id="birthday-envelope">
             <div class="envelope-flap"></div>
             <div class="envelope-body">
@@ -655,6 +675,8 @@
         // Envelope click handler
         document.getElementById('birthday-envelope').addEventListener('click', function() {
             this.classList.add('open'); // Just open the flap
+            document.getElementById('envelopeTip').classList.add('hidden'); // Hide the tip message
+
             setTimeout(() => {
                 document.getElementById('messageOverlay').classList.add('active'); // Show message popup
                 // Add sparkle when opened
@@ -673,6 +695,7 @@
         function closeMessage() {
             document.getElementById('messageOverlay').classList.remove('active');
             document.getElementById('birthday-envelope').classList.remove('open'); // Close envelope flap too
+            document.getElementById('envelopeTip').classList.remove('hidden'); // Show the tip message again if needed (e.g., if user closes message without interacting further)
         }
 
         // Function to open the image popup
